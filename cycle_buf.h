@@ -10,6 +10,7 @@ public:
 
 	// debug
 	int dumpLogFile() const;
+	size_t getBufSize() const {return _curSize;}
 private:
 	int write(const void* ptr, size_t size) const;
 	int read(void* ptr, size_t size) const;

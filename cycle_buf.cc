@@ -10,12 +10,12 @@ CycleBuf::CycleBuf(const char* logName, size_t maxSize) :
 	_logName(logName),
 	_log(NULL)
 {
-	if (open("rb")) {
+	if (open("rb") == 0) {
 		readHeader();
 
 		// header size changed, reinit
 		if (_maxSize != maxSize) {
-			remove(_logName.c_str());
+			open("w"); // rewrite log file
 			_maxSize = maxSize;
 			_startPos = 0;
 			_curSize = 0;
@@ -23,6 +23,7 @@ CycleBuf::CycleBuf(const char* logName, size_t maxSize) :
 		}
 
 	} else {
+		open("w");
 		writeHeader();
 	}
 	close();
@@ -53,7 +54,7 @@ int CycleBuf::open(const char* mode)
 	} else {
 		_log = freopen(_logName.c_str(), mode, _log);
 	}
-	return _log ? 0 : -1;
+	return isOpen() ? 0 : -1;
 }
 
 int CycleBuf::close()
@@ -83,9 +84,11 @@ int CycleBuf::writeBuf(void *ptr, size_t size)
 {
 	if (size == 0) return 0;
 
+	size_t writePos = ((_startPos + _curSize) % _maxSize);
+
 	if (ptr == NULL ||
-		open("wb") < 0 ||
-		seek(_startPos) < 0) return -1;
+		open("rb+") < 0 ||
+		seek(writePos) < 0) return -1;
 
 	// no need to write data bigger than buffer, write only its last part
 	if (size > _maxSize) {
@@ -93,7 +96,7 @@ int CycleBuf::writeBuf(void *ptr, size_t size)
 		size = _maxSize;
 	}
 
-	size_t leftSize = _maxSize - _startPos;
+	size_t leftSize = _maxSize - writePos;
 	if (leftSize > _maxSize) return -1; // check overflow
 
 	int written = write(ptr, (leftSize < size) ? leftSize : size);
@@ -104,11 +107,15 @@ int CycleBuf::writeBuf(void *ptr, size_t size)
 		written += write((uint8_t*)ptr + written, size - written);
 	}
 
-	_startPos = (_startPos + size) % _maxSize;
-	_curSize = _curSize + size;
-	if (_curSize > _maxSize) _curSize = _maxSize;
+	_curSize += size;
+	if (_curSize > _maxSize) {
+		_startPos += (_curSize % _maxSize);
+		_startPos = (_startPos % _maxSize);
+		_curSize = _maxSize;
+	}
 
 	if (close() == EOF) return -1;
+	writeHeader();
 	return (size_t)written == size ? written : -1;
 }
 
@@ -131,7 +138,8 @@ int CycleBuf::readBuf(void *ptr, size_t size)
 
 	if (leftSize < size) {
 		seek(0);
-		wasRead += read((uint8_t*)ptr + wasRead, size - wasRead);
+		ptr = ((uint8_t*)ptr) + wasRead;
+		wasRead += read(ptr, size - wasRead);
 	}
 
 	if (close() == EOF) return -1;
@@ -140,7 +148,7 @@ int CycleBuf::readBuf(void *ptr, size_t size)
 
 int CycleBuf::writeHeader()
 {
-	if (open("wb") < 0) return -1;
+	if (open("rb+") < 0) return -1;
 	rewind(_log);
 
 	int written = 0;
@@ -155,7 +163,7 @@ int CycleBuf::writeHeader()
 int CycleBuf::readHeader()
 {
 	if (open("rb") < 0) return -1;
-	rewind(_log);
+ rewind(_log);
 
 	int wasRead = 0;
 	wasRead += read((void*)&_maxSize, sizeof(_maxSize));

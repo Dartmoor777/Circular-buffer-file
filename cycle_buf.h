@@ -7,9 +7,7 @@ public:
 	CycleBuf(const char* logName, size_t maxSize);
 	int readBuf(void* ptr, size_t size);
 	int writeBuf(void* ptr, size_t size);
-
-	// debug
-	int dumpLogFile() const;
+	int dumpLogFile(void *ptr, size_t size);
 	size_t getBufSize() const {return _curSize;}
 private:
 	int write(const void* ptr, size_t size) const;

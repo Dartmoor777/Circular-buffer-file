@@ -1,7 +1,6 @@
 #include "cycle_buf.h"
 #include <cstdio>
-#include <fstream>
-#include <iostream>
+#include <stdint.h>
 
 CycleBuf::CycleBuf(const char* logName, size_t maxSize) :
 	_maxSize(maxSize),
@@ -115,7 +114,9 @@ int CycleBuf::writeBuf(void *ptr, size_t size)
 	}
 
 	if (close() == EOF) return -1;
+
 	writeHeader();
+
 	return (size_t)written == size ? written : -1;
 }
 
@@ -163,7 +164,7 @@ int CycleBuf::writeHeader()
 int CycleBuf::readHeader()
 {
 	if (open("rb") < 0) return -1;
- rewind(_log);
+	rewind(_log);
 
 	int wasRead = 0;
 	wasRead += read((void*)&_maxSize, sizeof(_maxSize));
@@ -174,10 +175,20 @@ int CycleBuf::readHeader()
 	return (size_t)wasRead == getHeaderSize() ? wasRead : -1;
 }
 
-int CycleBuf::dumpLogFile() const
+int CycleBuf::dumpLogFile(void *ptr, size_t size)
 {
-	std::ifstream f(_logName);
-    if (f.is_open())
-        std::cout << f.rdbuf();
-	return 0;
+	if (size == 0) return 0;
+
+	if (ptr == NULL ||
+		open("rb") < 0 ||
+		seek(0) < 0) return -1;
+
+	// will be read exactly how much we have
+	if (size > _curSize) size = _curSize;
+
+	int wasRead = read(ptr, size);
+	if (wasRead < 0) return -1;
+
+	if (close() == EOF) return -1;
+	return (size_t)wasRead == size ? wasRead : -1;
 }

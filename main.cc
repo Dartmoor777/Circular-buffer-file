@@ -6,9 +6,9 @@
 
 static size_t bufSize = 10;
 static const char* logName = "logs.txt";
-static char bufferTest[] = "ABCDEFGHIKLMNOPQRSTVXYZabcdefghiklmnopqrstvxyz0123456789";
+static char bufferTest[] = "9876543210zyxvtsrqponmlkihgfedcbaZYXVTSRQPONMLKIHGFEDCBAabcdefghiklmnopqrstvxyz0123456789ABCDEFGHIKLMNOPQRSTVXYZ";
 static char bufferLog[sizeof(bufferTest)] = {};
-static size_t bufferTestSize = sizeof(bufferTest);
+static const size_t bufferTestSize = sizeof(bufferTest);
 static char* bufferTestP = bufferTest;
 static const char* bufferTestStart = bufferTest;
 static char* bufferLogP = bufferLog;
@@ -24,7 +24,7 @@ bool testWrite(size_t howMuch, CycleBuf& cycleBuf)
 	}
 	memset(bufferLogP, 0, sizeof(bufferTestSize));
 	if (cycleBuf.getBufSize() + howMuch > bufSize) {
-		offset += ((cycleBuf.getBufSize()+howMuch) % bufSize);
+		offset += ((cycleBuf.getBufSize()+howMuch) - bufSize);
 	}
 	cycleBuf.writeBuf(bufferTestP, howMuch);
 	cycleBuf.readBuf(bufferLogP, cycleBuf.getBufSize());
@@ -44,9 +44,9 @@ bool testWrite(size_t howMuch, CycleBuf& cycleBuf)
 	}
 }
 
-int main()
+void checkWrite()
 {
-	size_t offset = 0;
+
 
 	CycleBuf cycleBuf(logName, bufSize);
 	int writeValue = 0;
@@ -55,9 +55,9 @@ int main()
 #define TEST_WRITE(vALUE)							\
 	do{												\
 		if(testWrite(vALUE, cycleBuf)) {			\
-			cout << "test " << "success!" << endl;	\
+			cout << "test " << test << " success!" << endl;	\
 		} else {									\
-			cout << "test " << "fail!" << endl;		\
+			cout << "test " << test << " fail!" << endl;	\
 		}											\
 		test++;										\
 	}while(0)
@@ -65,10 +65,50 @@ int main()
 	TEST_WRITE(2);
 	TEST_WRITE(8);
 	TEST_WRITE(7);
+	TEST_WRITE(16);
 	TEST_WRITE(4);
 	TEST_WRITE(6);
 	TEST_WRITE(2);
-	TEST_WRITE(8);
+	TEST_WRITE(3);
+
+}
+
+void checkReadAndPersistence()
+{
+	CycleBuf cycleBuf(logName, bufSize);
+	size_t test = 1;
+	cout << endl;
+	if(memcmp(bufferTest + offset, bufferLogP, cycleBuf.getBufSize()) == 0) {
+		cout << "read test " << test << " success!" << endl;
+	} else {
+		cout << "read test " << test << "fail!" << endl;	
+	}
+
+}
+
+int main()
+{
+	checkWrite();
+	checkReadAndPersistence();
+
+	cout << "CHECK SIZE CHANGE" << endl;
+	bufSize = 15;
+	bufferTestP = bufferTest;
+	bufferLogP = bufferLog;
+	offset = 0;
+
+	checkWrite();
+	checkReadAndPersistence();
+
+
+	cout << "CHECK SIZE CHANGE TO LOWER" << endl;
+	bufSize = 5;
+	bufferTestP = bufferTest;
+	bufferLogP = bufferLog;
+	offset = 0;
+
+	checkWrite();
+	checkReadAndPersistence();
 
 	remove(logName);
     return 0;

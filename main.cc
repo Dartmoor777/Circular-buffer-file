@@ -4,9 +4,10 @@
 #include <cstring>
 #include <cstdio>
 
-static size_t bufSize = 10;
+static size_t bufSize = 4096;
 static const char* logName = "logs.txt";
-static char bufferTest[] = "9876543210zyxvtsrqponmlkihgfedcbaZYXVTSRQPONMLKIHGFEDCBAabcdefghiklmnopqrstvxyz0123456789ABCDEFGHIKLMNOPQRSTVXYZ";
+// static char bufferTest[] = "9876543210zyxvtsrqponmlkihgfedcbaZYXVTSRQPONMLKIHGFEDCBAabcdefghiklmnopqrstvxyz0123456789ABCDEFGHIKLMNOPQRSTVXYZ";
+static char bufferTest[32768] = {};
 static char bufferLog[sizeof(bufferTest)] = {};
 static const size_t bufferTestSize = sizeof(bufferTest);
 static char* bufferTestP = bufferTest;
@@ -48,7 +49,10 @@ void checkWrite()
 {
 
 
-	CycleBuf cycleBuf(logName, bufSize);
+	CycleBuf cycleBuf;
+	if (cycleBuf.init(logName, bufSize) <0 ) {
+		cout << "Failed to init !! Line=" << __LINE__ << endl;
+	}
 	int writeValue = 0;
 	size_t test = 1;
 
@@ -62,20 +66,23 @@ void checkWrite()
 		test++;										\
 	}while(0)
 
-	TEST_WRITE(2);
-	TEST_WRITE(8);
-	TEST_WRITE(7);
-	TEST_WRITE(16);
-	TEST_WRITE(4);
-	TEST_WRITE(6);
-	TEST_WRITE(2);
+	TEST_WRITE(1024);
+	TEST_WRITE(2048);
+	TEST_WRITE(356);
+	TEST_WRITE(444);
 	TEST_WRITE(3);
+	TEST_WRITE(355);
+	TEST_WRITE(22);
+	TEST_WRITE(961);
 
 }
 
 void checkReadAndPersistence()
 {
-	CycleBuf cycleBuf(logName, bufSize);
+	CycleBuf cycleBuf;
+	if (cycleBuf.init(logName, bufSize) <0 ) {
+		cout << "Failed to init !! Line=" << __LINE__ << endl;
+	}
 	size_t test = 1;
 	cout << endl;
 	if(memcmp(bufferTest + offset, bufferLogP, cycleBuf.getBufSize()) == 0) {
@@ -88,6 +95,18 @@ void checkReadAndPersistence()
 
 int main()
 {
+	// bufferTest
+	FILE *fp = fopen("test.txt", "r");
+	char symbol;
+	if(fp != NULL)
+	{
+		while((symbol = getc(fp)) != EOF)
+		{
+			strcat(bufferTest, &symbol);
+		}
+		fclose(fp);
+	}
+
 	checkWrite();
 	checkReadAndPersistence();
 

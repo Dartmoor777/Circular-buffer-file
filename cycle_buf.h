@@ -4,11 +4,13 @@
 
 class CycleBuf {
 public:
-	CycleBuf(const char* logName, size_t maxSize);
+	CycleBuf();
+	int init(const char* logName, size_t maxSize);
 	int readBuf(void* ptr, size_t size);
 	int writeBuf(void* ptr, size_t size);
 	int dumpLogFile(void *ptr, size_t size);
 	size_t getBufSize() const {return _curSize;}
+	size_t getBufMaxSize() const {return _maxSize;}
 private:
 	bool copy(const char* from, const char* name) const;
 	int write(const void* ptr, size_t size) const;

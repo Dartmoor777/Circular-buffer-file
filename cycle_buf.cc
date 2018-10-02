@@ -2,31 +2,43 @@
 #include <cstdio>
 #include <stdint.h>
 
-CycleBuf::CycleBuf(const char* logName, size_t maxSize) :
-	_maxSize(maxSize),
+CycleBuf::CycleBuf() :
+	_maxSize(0),
 	_curSize(0),
 	_startPos(0),
-	_logName(logName),
-	_log(NULL),
-	_swapPrefix("_tmp")
+	_swapPrefix("_tmp"),
+	_logName(""),
+	_log(NULL)
 {
+}
+
+
+int CycleBuf::init(const char* logName, size_t maxSize)
+{
+	_logName = logName;
+	_maxSize = maxSize;
+	_startPos = 0;
+	_curSize = 0;
+
 	if (open("rb") == 0) {
-		readHeader();
+		if (readHeader() < 0) return -1;
 
 		// header size changed, reinit
 		if (_maxSize != maxSize) {
-			open("wb"); // rewrite log file
+			if (open("wb") < 0) return -1; // rewrite log file
 			_maxSize = maxSize;
 			_startPos = 0;
 			_curSize = 0;
-			writeHeader();
+			if (writeHeader() < 0) return -1;
 		}
 
 	} else {
-		open("w");
-		writeHeader();
+		if (open("wb") < 0) return -1;
+		if (writeHeader() < 0) return -1;
 	}
-	close();
+	if (close() < 0) return -1;
+
+	return 0;
 }
 
 int CycleBuf::write(const void *ptr, size_t size) const
@@ -106,7 +118,7 @@ bool CycleBuf::copy(const char* from, const char* to)
 	FILE *toF = fopen(to, "wb");
 	bool stat = true;
 
-	while ((n = fread(buffer, sizeof(char), _maxSize + getHeaderSize(), fromF)) > 0) {
+	while ((n = fread(buffer, sizeof(char), sizeof(buffer), fromF)) > 0) {
 		if (n < 0){
 			stat = false;
 			break;
